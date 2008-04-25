@@ -2,3 +2,4 @@ krails
 *.o
 *.so
 moc_*.cpp
+Makefile
