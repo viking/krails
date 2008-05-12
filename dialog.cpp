@@ -1,44 +1,41 @@
 #include "dialog.h"
 
 RailsDialog::RailsDialog( QWidget *parent, const char *name, WFlags f )
-  : QVBox(parent, name, f)
+  : QWidget(parent, name, f)
 {
   railsPath = QDir::homeDirPath() + "/rails";
-  setSpacing(5);
+  tabConf   = QString::null;
 
-  hbox0      = new QHBox( this );
-  label0     = new QLabel( "Rails directory:", hbox0 );
-  leRailsDir = new KLineEdit( railsPath, hbox0 );
-  btnDir     = new KPushButton( "Change", hbox0 );
+  grid = new QGridLayout(this, 4, 3, 0, 5);
+  grid->addWidget( new QLabel( "Working directory:", this ), 0, 0 );
+  grid->addWidget( new QLabel( "Configuration:", this ), 1, 0 );
+  grid->addWidget( new QLabel( "Application:", this ), 2, 0 );
+
+  leRailsDir = new KLineEdit( railsPath, this );
   leRailsDir->setReadOnly(true);
-  hbox0->setSpacing(5);
+  leTabConf  = new KLineEdit( tabConf, this );
+  leTabConf->setReadOnly(true);
+  cbRailsApp = new KComboBox( this );
+  grid->addWidget( leRailsDir, 0, 1 );
+  grid->addWidget( leTabConf,  1, 1 );
+  grid->addWidget( cbRailsApp, 2, 1 );
 
-  hbox1      = new QHBox( this );
-  label1     = new QLabel( "Rails application:", hbox1 );
-  cbRailsApp = new KComboBox( hbox1 );
-  hbox1->setSpacing(5);
+  btnDir     = new KPushButton( "Change", this );
+  btnConf    = new KPushButton( "Change", this );
+  grid->addWidget( btnDir, 0, 2 );
+  grid->addWidget( btnConf, 1, 2 );
 
-  hbox2     = new QHBox( this );
-  btnGo     = new KPushButton( "Go", hbox2 );
-  btnCancel = new KPushButton( "Cancel", hbox2 );
-  hbox2->setSpacing(5);
+  hbox       = new QHBox( this );
+  btnGo      = new KPushButton( "Go", hbox );
+  btnCancel  = new KPushButton( "Cancel", hbox );
+  grid->addMultiCellWidget( hbox, 3, 3, 1, 2 );
 
   connect(btnGo, SIGNAL(clicked()), SLOT(go()));
   connect(btnCancel, SIGNAL(clicked()), kapp, SLOT(quit()));
   connect(btnDir, SIGNAL(clicked()), SLOT(changeDir()));
+  connect(btnConf, SIGNAL(clicked()), SLOT(changeConf()));
 
   findApplications();
-}
-
-RailsDialog::~RailsDialog()
-{
-  delete cbRailsApp;
-  delete label1;
-  delete hbox1;
-
-  delete btnGo;
-  delete btnCancel;
-  delete hbox2;
 }
 
 void RailsDialog::go()
@@ -53,24 +50,36 @@ void RailsDialog::go()
   QString konsoleName( "konsole-script" );
   errcode = KApplication::startServiceByDesktopName( konsoleName, QString::null, &error, &dcopService, &pid );
   konsole.setRef( dcopService, "konsole" );
-  session.setRef( dcopService, "session-1" );
+  session.clear();
 
-  setupSession("spec-dev", "spec");
-  newSession("spec");
-  newSession("dev1");
-  newSession("dev2");
-  newSession("dev3");
-  newSession("cnsl", "", "script/console");
-  newSession("log", "log", "tail -f test.log");
-  newSession("db");
-  newSession("srv", "", "script/server webrick");
-  
-  if (QFile::exists(appDir + "/vendor/rails"))
-    newSession("src", "vendor/rails");
-  else
-    newSession("src", "/usr/lib/ruby/gems/1.8/gems");
+  if (tabConf.isNull()) {
+    session.setRef( dcopService, "session-1" );
+    setupSession("spec-dev", "spec");
+    newSession("spec");
+    newSession("dev1");
+    newSession("dev2");
+    newSession("dev3");
+    newSession("cnsl", "", "script/console");
+    newSession("log", "log", "tail -f test.log");
+    newSession("db");
+    newSession("srv", "", "script/server webrick");
+    
+    if (QFile::exists(appDir + "/vendor/rails"))
+      newSession("src", "vendor/rails");
+    else
+      newSession("src", "/usr/lib/ruby/gems/1.8/gems");
 
-  newSession("misc");
+    newSession("misc");
+  }
+  else {
+    /* use custom configuration file */
+    ConfigHandler handler( this );
+    QXmlSimpleReader reader;
+    QFile file( tabConf );
+    QXmlInputSource source( file );
+    reader.setContentHandler( &handler );
+    reader.parse( source );
+  }
 
   kapp->quit();
 }
@@ -84,6 +93,16 @@ void RailsDialog::changeDir()
   railsPath = url.path();
   leRailsDir->setText(railsPath);
   findApplications();
+}
+
+void RailsDialog::changeConf()
+{
+  QString fn = KFileDialog::getOpenFileName(QString::null, "*.xml", this, "Select tab configuration:");
+  if (fn.isEmpty()) {
+    return;
+  }
+  tabConf = fn;
+  leTabConf->setText(tabConf);
 }
 
 // find rails applications
@@ -115,9 +134,14 @@ void RailsDialog::setupSession( QString name, QString subpath, QString exec )
 
 void RailsDialog::newSession( QString name, QString subpath, QString exec )
 {
-  QString sessionName;
-  DCOPReply result = konsole.call( "newSession" );
-  result.get(sessionName);
-  session.setRef( dcopService, sessionName.utf8() );
+  if (session.isNull()) {
+    session.setRef( dcopService, "session-1" );
+  }
+  else {
+    QString sessionName;
+    DCOPReply result = konsole.call( "newSession" );
+    result.get(sessionName);
+    session.setRef( dcopService, sessionName.utf8() );
+  }
   setupSession( name, subpath, exec );
 }

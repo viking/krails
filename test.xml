@@ -1,0 +1,3 @@
+<krails>
+  <tab name="foo" command="echo foo"/>
+</krails>

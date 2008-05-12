@@ -3,3 +3,4 @@ krails
 *.so
 moc_*.cpp
 Makefile
+.*.swp
