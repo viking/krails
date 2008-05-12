@@ -3,8 +3,10 @@
 RailsDialog::RailsDialog( QWidget *parent, const char *name, WFlags f )
   : QWidget(parent, name, f)
 {
-  railsPath = QDir::homeDirPath() + "/rails";
-  tabConf   = QString::null;
+  conf = new KSimpleConfig("krailsrc");
+  railsPath = conf->readEntry("working_dir", QDir::homeDirPath() + "/rails");
+  tabConf   = conf->readEntry("tab_conf", QString::null);
+  appName   = conf->readEntry("app_name", QString::null);
 
   grid = new QGridLayout(this, 4, 3, 0, 5);
   grid->addWidget( new QLabel( "Working directory:", this ), 0, 0 );
@@ -43,8 +45,8 @@ void RailsDialog::go()
   int errcode, pid;
   QString error;
 
-  QString app = cbRailsApp->currentText();
-  appDir = railsPath + "/" + app;
+  appName = cbRailsApp->currentText();
+  appDir  = railsPath + "/" + appName;
 
   // fire up konsole
   QString konsoleName( "konsole-script" );
@@ -81,6 +83,10 @@ void RailsDialog::go()
     reader.parse( source );
   }
 
+  conf->writeEntry("working_dir", railsPath);
+  conf->writeEntry("tab_conf", tabConf);
+  conf->writeEntry("app_name", appName);
+  conf->sync();
   kapp->quit();
 }
 
@@ -108,18 +114,24 @@ void RailsDialog::changeConf()
 // find rails applications
 void RailsDialog::findApplications()
 {
+  int index = -1, i = 0;
   cbRailsApp->clear();
   QDir railsDir( railsPath );
   QStringList files = railsDir.entryList();
-  for ( QStringList::Iterator it = files.begin(); it != files.end(); ++it ) {
+  for ( QStringList::Iterator it = files.begin(); it != files.end(); ++it, i++ ) {
     if ( *it == "." || *it == ".." )
       continue;
 
     QFileInfo info( railsPath + "/" + *it );
     if (info.isDir()) {
       cbRailsApp->insertItem( *it );
+      if (*it == appName)
+        index = i; 
     }
   }
+
+  if (index > 0)
+    cbRailsApp->setCurrentItem(index);
 }
 
 void RailsDialog::setupSession( QString name, QString subpath, QString exec )

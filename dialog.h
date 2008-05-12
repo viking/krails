@@ -13,6 +13,7 @@
 #include <klineedit.h>
 #include <kapplication.h>
 #include <kurl.h>
+#include <ksimpleconfig.h>
 #include <dcopref.h>
 
 class RailsDialog : public QWidget
@@ -37,8 +38,9 @@ private:
   QHBox *hbox;
   KLineEdit *leRailsDir, *leTabConf;
   KPushButton *btnGo, *btnCancel, *btnDir, *btnConf;
+  KConfig *conf;
 
-  QString railsPath, appDir, tabConf;
+  QString railsPath, appDir, tabConf, appName;
   QCString dcopService;
   DCOPRef konsole, session;
 };
