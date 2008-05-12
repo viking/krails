@@ -37,7 +37,9 @@ bool ConfigHandler::endElement( const QString&, const QString&, const QString &n
   if (name == "krails")
     inConf = false;
   else if (name == "tab") {
-    parent->newSession(tName, tDir, tCommand);
+    if (!tName.isNull()) {
+      parent->newSession(tName, tDir, tCommand);
+    }
     tName = tDir = tCommand = QString::null;
   }
 
