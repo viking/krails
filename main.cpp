@@ -2,6 +2,8 @@
 #include <kaboutdata.h>
 #include <kcmdlineargs.h>
 #include <qrect.h>
+#include <qcstring.h>
+#include <qstring.h>
 #include "dialog.h"
 
 static const char description[] =
@@ -11,6 +13,9 @@ static const char version[] = "0.1";
 
 static KCmdLineOptions options[] =
 {
+  { "working-dir <dir>", "directory to look for apps", 0 },
+  { "tab-conf <file>", "XML configuration file", 0 },
+  { "app-name <name>", "application name", 0 },
   KCmdLineLastOption
 };
 
@@ -22,8 +27,13 @@ int main( int argc, char **argv )
   KCmdLineArgs::addCmdLineOptions(options);
   KApplication app;
 
+  KCmdLineArgs *args = KCmdLineArgs::parsedArgs();
+  QCString rDir  = args->getOption("working-dir");
+  QCString rConf = args->getOption("tab-conf");
+  QCString rApp  = args->getOption("app-name");
+
   int flags = Qt::WStyle_Customize | Qt::WStyle_Title | Qt::WStyle_NormalBorder & ~(Qt::WStyle_Maximize);
-  RailsDialog* dialog = new RailsDialog( 0, "Rails Development Helper", flags );
+  RailsDialog* dialog = new RailsDialog( 0, "Rails Development Helper", flags, rDir, rConf, rApp );
 
   dialog->adjustSize();
   QRect rect = QApplication::desktop()->geometry();

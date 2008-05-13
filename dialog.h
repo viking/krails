@@ -20,7 +20,7 @@ class RailsDialog : public QWidget
 {
   Q_OBJECT
 public:
-  RailsDialog( QWidget * parent = 0, const char * name = 0, WFlags f = 0 );
+  RailsDialog( QWidget * parent = 0, const char * name = 0, WFlags f = 0, QString rDir = QString::null, QString rConf = QString::null, QString rApp = QString::null );
   void newSession( QString name, QString subpath = QString::null, QString exec = QString::null );
 
   KComboBox *cbRailsApp;
@@ -29,6 +29,7 @@ private slots:
   void go();
   void changeDir();
   void changeConf();
+  void appChanged(int);
 
 private:
   void findApplications();
@@ -40,6 +41,7 @@ private:
   KPushButton *btnGo, *btnCancel, *btnDir, *btnConf;
   KConfig *conf;
 
+  bool saveDir, saveConf, saveApp;
   QString railsPath, appDir, tabConf, appName;
   QCString dcopService;
   DCOPRef konsole, session;

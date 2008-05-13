@@ -1,12 +1,36 @@
 #include "dialog.h"
 
-RailsDialog::RailsDialog( QWidget *parent, const char *name, WFlags f )
+RailsDialog::RailsDialog( QWidget *parent, const char *name, WFlags f, QString rDir, QString rConf, QString rApp )
   : QWidget(parent, name, f)
 {
+  /* get config; command-line arguments take precedence */
   conf = new KSimpleConfig("krailsrc");
-  railsPath = conf->readEntry("working_dir", QDir::homeDirPath() + "/rails");
-  tabConf   = conf->readEntry("tab_conf", QString::null);
-  appName   = conf->readEntry("app_name", QString::null);
+  if (rDir.isNull()) {
+    railsPath = conf->readEntry("working_dir", QDir::homeDirPath() + "/rails");
+    saveDir = true;
+  }
+  else {
+    railsPath = rDir;
+    saveDir = false;
+  }
+  
+  if (rConf.isNull()) {
+    tabConf = conf->readEntry("tab_conf", QString::null);
+    saveConf = true;
+  }
+  else {
+    tabConf = rConf;
+    saveConf = false;
+  }
+
+  if (rApp.isNull()) {
+    appName = conf->readEntry("app_name", QString::null);
+    saveApp = true;
+  }
+  else {
+    appName = rApp;
+    saveApp = false;
+  }
 
   grid = new QGridLayout(this, 4, 3, 0, 5);
   grid->addWidget( new QLabel( "Working directory:", this ), 0, 0 );
@@ -36,6 +60,7 @@ RailsDialog::RailsDialog( QWidget *parent, const char *name, WFlags f )
   connect(btnCancel, SIGNAL(clicked()), kapp, SLOT(quit()));
   connect(btnDir, SIGNAL(clicked()), SLOT(changeDir()));
   connect(btnConf, SIGNAL(clicked()), SLOT(changeConf()));
+  connect(cbRailsApp, SIGNAL(activated(int)), SLOT(appChanged(int)));
 
   findApplications();
 }
@@ -45,7 +70,6 @@ void RailsDialog::go()
   int errcode, pid;
   QString error;
 
-  appName = cbRailsApp->currentText();
   appDir  = railsPath + "/" + appName;
 
   // fire up konsole
@@ -83,9 +107,9 @@ void RailsDialog::go()
     reader.parse( source );
   }
 
-  conf->writeEntry("working_dir", railsPath);
-  conf->writeEntry("tab_conf", tabConf);
-  conf->writeEntry("app_name", appName);
+  if (saveDir)  conf->writeEntry("working_dir", railsPath);
+  if (saveConf) conf->writeEntry("tab_conf", tabConf);
+  if (saveApp)  conf->writeEntry("app_name", appName);
   conf->sync();
   kapp->quit();
 }
@@ -93,45 +117,59 @@ void RailsDialog::go()
 void RailsDialog::changeDir()
 {
   KURL url = KDirSelectDialog::selectDirectory(railsPath, true, this, "Select Rails Directory:");
-  if (url.isEmpty()) {
+  if (url.isEmpty() || url.path() == railsPath) {
     return;
   }
   railsPath = url.path();
   leRailsDir->setText(railsPath);
   findApplications();
+  saveDir = true;
+  saveApp = true;
 }
 
 void RailsDialog::changeConf()
 {
   QString fn = KFileDialog::getOpenFileName(QString::null, "*.xml", this, "Select tab configuration:");
-  if (fn.isEmpty()) {
+  if (fn.isEmpty() || fn == tabConf) {
     return;
   }
   tabConf = fn;
   leTabConf->setText(tabConf);
+  saveConf = true;
+}
+
+void RailsDialog::appChanged( int )
+{
+  appName = cbRailsApp->currentText();
+  saveApp = true;
 }
 
 // find rails applications
 void RailsDialog::findApplications()
 {
-  int index = -1, i = 0;
+  int index = -1;
   cbRailsApp->clear();
   QDir railsDir( railsPath );
   QStringList files = railsDir.entryList();
-  for ( QStringList::Iterator it = files.begin(); it != files.end(); ++it, i++ ) {
+  for ( QStringList::Iterator it = files.begin(); it != files.end(); ++it ) {
     if ( *it == "." || *it == ".." )
       continue;
 
     QFileInfo info( railsPath + "/" + *it );
     if (info.isDir()) {
       cbRailsApp->insertItem( *it );
-      if (*it == appName)
-        index = i; 
+      if (appName == *it) {
+        index = cbRailsApp->count()-1;
+        qDebug( "found %s as %d", appName.latin1(), index );
+      }
+      qDebug( "%s %d", (*it).latin1(), cbRailsApp->count());
     }
   }
 
   if (index > 0)
     cbRailsApp->setCurrentItem(index);
+  else
+    appName = cbRailsApp->currentText();
 }
 
 void RailsDialog::setupSession( QString name, QString subpath, QString exec )
