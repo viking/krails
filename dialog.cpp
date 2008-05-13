@@ -160,9 +160,9 @@ void RailsDialog::findApplications()
       cbRailsApp->insertItem( *it );
       if (appName == *it) {
         index = cbRailsApp->count()-1;
-        qDebug( "found %s as %d", appName.latin1(), index );
+        /*qDebug( "found %s as %d", appName.latin1(), index );*/
       }
-      qDebug( "%s %d", (*it).latin1(), cbRailsApp->count());
+      /*qDebug( "%s %d", (*it).latin1(), cbRailsApp->count());*/
     }
   }
 
